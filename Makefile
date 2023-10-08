@@ -10,7 +10,6 @@ clean:
 	@cd src && $(MAKE) clean
 	@rm -f $(EXE)
 
-
 help:
 	@echo "Usage:"
 	@echo " make [all]\t\tBuild"

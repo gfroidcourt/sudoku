@@ -1,5 +1,7 @@
 #include "sudoku.h"
 
+#include "grid.h"
+
 #include <stdbool.h>
 #include <stddef.h>
 #include <stdio.h>
@@ -12,13 +14,6 @@
 
 static bool verbose = false;
 static FILE* output;
-
-typedef struct {
-  size_t size;
-  char** cells;
-} grid_t;
-
-const size_t MAX_GRID_SIZE = 128;
 
 static void
 print_help(char* executable_name) {
@@ -37,122 +32,68 @@ print_help(char* executable_name) {
   exit(EXIT_SUCCESS);
 }
 
-static int
-count_non_space_characters(char* s) {
-  int count = 0;
-  char* str = s;
-  while (*str != '\0') {
-    if (*str != ' ' && *str != '\t' && *str != '\n') {
-      count++;
-    }
-    str++;
-  }
-  return count;
-}
-
 static grid_t*
 file_parser(char* filename) {
   FILE* file = fopen(filename, "r");
 
-  if (file == NULL) {
-    err(EXIT_FAILURE, "Error opening file: %s", filename);
+  if (!file) {
+    perror("Error opening file");
     return NULL;
   }
 
   char first_row[MAX_GRID_SIZE];
+  size_t idx = 0;
+  char ch;
 
-  if (fgets(first_row, MAX_GRID_SIZE, file) == NULL) {
-    warnx("warning: '%s' is empty!", filename);
-    exit(EXIT_FAILURE);
-  }
-
-  // if the first row is empty line or starts with a comment ignore it and take the next line
-  while (first_row[0] == '\n' || first_row[0] == '#') {
-    fgets(first_row, MAX_GRID_SIZE, file) == NULL;
-  }
-
-  size_t size = count_non_space_characters(first_row);
-
-  if (!check_grid_size(size)) {
-    warnx("warning: '%s' wrong grid size: %ld!", filename, size);
-    exit(EXIT_FAILURE);
-  }
-
-  // Allocate memory for the grid
-  grid_t* grid = grid_alloc(size);
-  grid->size = size;
-
-  // Copy the first row to the grid
-  for (size_t i = 0; i < size * 2 - 1; i += 2) {
-    // Remove spaces
-    if (!check_char(grid, first_row[i])) {
-      warnx("warning: '%s' wrong character '%c' at line 1!", filename,
-            first_row[i]);
-      exit(EXIT_FAILURE);
+  while ((ch = fgetc(file)) != EOF && ch != '\n') {
+    if (ch == '#') { // Ignore the rest of the line after '#'
+      while ((ch = fgetc(file)) != EOF && ch != '\n')
+        ;
+      break;
     }
-    grid->cells[0][i / 2] = first_row[i];
-  }
-
-  // Parse the rest of the file and store the values in the grid
-  int row = 1;
-  int col = 0;
-  char c;
-
-  while ((c = fgetc(file)) != EOF) {
-    switch (c) {
-      case ' ':
-      case ('\t'):
-        continue;
-
-      case '#':
-        // Skip the rest of the line
-        while ((c = fgetc(file)) != EOF && c != '\n')
-          ;
-        break;
-
-      case '\n':
-        if (col > 0) {
-          row++;
-        }
-        col = 0;
-        break;
-
-      default:
-        if (!check_char(grid, c)) {
-          warnx("warning: '%s' wrong character '%c' at line %d!", filename, c,
-                row + 1);
-          exit(EXIT_FAILURE);
-        }
-
-        if (col >= grid->size) {
-          warnx(
-              "warning: '%s' line '%d' is malformed! (wrong number of columns)",
-              filename, row + 1);
-          exit(EXIT_FAILURE);
-        }
-
-        if (row >= grid->size) {
-          warnx("warning: '%s' is malformed! (wrong number of lines)",
-                filename);
-          exit(EXIT_FAILURE);
-        }
-
-        grid->cells[row][col] = c;
-        col++;
+    if (ch != ' ' && ch != '\t') {
+      if (idx >= MAX_GRID_SIZE) {
+        fprintf(stderr, "Error: Row has too many columns.\n");
+        fclose(file);
+        return NULL;
+      }
+      first_row[idx++] = ch;
     }
   }
 
-  if (row < grid->size) {
-    warnx("warning: grid has %d missing line(s)", filename, grid->size - row);
-    exit(EXIT_FAILURE);
+  grid_t* grid = grid_alloc(idx);
+
+  if (!grid) {
+    fprintf(stderr, "Error allocating memory for grid.\n");
+    fclose(file);
+    return NULL;
+  }
+  for (size_t i = 0; i < idx; i++) {
+    if (!grid_check_char(grid, first_row[i])) {
+      fprintf(stderr, "Error: Invalid character '%c' in grid.\n", first_row[i]);
+      grid_free(grid);
+      fclose(file);
+      return NULL;
+    }
+    grid_set_cell(grid, 0, i, first_row[i]);
   }
 
-  grid_print(grid, output);
+  size_t row_count = 1;
+  while ((ch = fgetc(file)) != EOF) {
+    if (ch == '\n') {
+      row_count++;
+    }
+  }
 
-  grid_free(grid);
+  if (row_count != grid_get_size(grid)) {
+    fprintf(stderr, "Error: Grid does not have the right number of rows.\n");
+    grid_free(grid);
+    fclose(file);
+    return NULL;
+  }
 
   fclose(file);
-
+  grid_print(grid, stdout); // Display the parsed grid
   return grid;
 }
 

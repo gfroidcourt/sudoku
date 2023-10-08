@@ -4,10 +4,16 @@ LDFLAGS =
 
 all: sudoku
 
-sudoku: sudoku.o
+sudoku: sudoku.o colors.o grid.o
 	$(CC) $(CFLAGS) -o $@ $^ $(LDFLAGS)
 
 sudoku.o: sudoku.c sudoku.h
+	$(CC) $(CFLAGS) $(CPPFLAGS) -c $<
+
+colors.o: colors.c colors.h
+	$(CC) $(CFLAGS) $(CPPFLAGS) -c $<
+
+grid.o: grid.c grid.h
 	$(CC) $(CFLAGS) $(CPPFLAGS) -c $<
 
 clean:

@@ -2,6 +2,7 @@
 
 #include <stdbool.h>
 #include <stdio.h>
+#include <stdlib.h> // for random()
 
 colors_t
 colors_full(const size_t size) {
@@ -75,13 +76,11 @@ colors_and(const colors_t colors1, const colors_t colors2) {
 
 colors_t
 colors_or(const colors_t colors1, const colors_t colors2) {
-  // Use bitwise OR to compute the union of colors1 and colors2
   return colors1 | colors2;
 }
 
 colors_t
 colors_xor(const colors_t colors1, const colors_t colors2) {
-  // Use bitwise XOR to compute the exclusive union of colors1 and colors2
   return colors1 ^ colors2;
 }
 
@@ -93,7 +92,6 @@ colors_subtract(const colors_t colors1, const colors_t colors2) {
 
 bool
 colors_is_equal(const colors_t colors1, const colors_t colors2) {
-  // Check for equality of colors1 and colors2
   return colors1 == colors2;
 }
 
@@ -125,7 +123,6 @@ colors_count(const colors_t colors) {
 
 colors_t
 colors_rightmost(const colors_t colors) {
-  // Extract and return the rightmost set bit
   return colors & (-colors);
 }
 
@@ -142,8 +139,6 @@ colors_leftmost(const colors_t colors) {
 
   return temp;
 }
-
-#include <stdlib.h> // for random()
 
 colors_t
 colors_random(const colors_t colors) {
