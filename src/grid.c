@@ -1,6 +1,9 @@
 #include "grid.h"
 
 #include <colors.h>
+
+#include <string.h>
+
 #include <stdbool.h>
 #include <stddef.h>
 #include <stdio.h>
@@ -14,31 +17,32 @@ struct _grid_t {
 
 bool
 grid_check_char(const grid_t* grid, const char c) {
-  if (c == '_') {
-    return true; // Empty cell character is always valid
+  if (!grid) {
+    return false;
   }
 
   switch (grid->size) {
-    case 1:
-      return c == '1';
-    case 4:
-      return c >= '1' && c <= '4';
-    case 9:
-      return c >= '1' && c <= '9';
-    case 16:
-      return (c >= '1' && c <= '9') || (c >= 'A' && c <= 'G');
-    case 25:
-      return (c >= '1' && c <= '9') || (c >= 'A' && c <= 'P');
-    case 36:
-      return (c >= '1' && c <= '9') || (c >= 'A' && c <= 'Z') || (c == '@');
-    case 49:
-      return (c >= '1' && c <= '9') || (c >= 'A' && c <= 'Z') || (c == '@')
-             || (c >= 'a' && c <= 'm');
     case 64:
-      return (c >= '1' && c <= '9') || (c >= 'A' && c <= 'Z')
-             || (c >= 'a' && c <= 'z') || strchr("@&*", c);
+      return (c >= '1' && c <= '9') || (c >= 'A' && c <= 'Z') || c == '@'
+             || (c >= 'a' && c <= 'z') || c == '&' || c == '*' || c == '_';
+    case 49:
+      return (c >= '1' && c <= '9') || (c >= 'A' && c <= 'Z') || c == '@'
+             || (c >= 'a' && c <= 'm') || c == '_';
+    case 36:
+      return (c >= '1' && c <= '9') || (c >= 'A' && c <= 'Z') || c == '@'
+             || c == '_';
+    case 25:
+      return (c >= '1' && c <= '9') || (c >= 'A' && c <= 'P') || c == '_';
+    case 16:
+      return (c >= '1' && c <= '9') || (c >= 'A' && c <= 'G') || c == '_';
+    case 9:
+      return (c >= '1' && c <= '9') || c == '_';
+    case 4:
+      return (c >= '1' && c <= '4') || c == '_';
+    case 1:
+      return c == '1' || c == '_';
     default:
-      return false; // If grid size is not recognized
+      return false;
   }
 }
 
@@ -64,13 +68,22 @@ grid_free(grid_t* grid) {
 
 void
 grid_print(const grid_t* grid, FILE* fd) {
-  for (size_t i = 0; i < grid->size; ++i) {
-    for (size_t j = 0; j < grid->size; ++j) {
-      fprintf(fd, "%c", grid->cells[i][j]);
-      if (j == grid->size - 1) {
-        continue;
+  if (!grid || !fd) {
+    return;
+  }
+
+  for (size_t i = 0; i < grid_get_size(grid); i++) {
+    for (size_t j = 0; j < grid_get_size(grid); j++) {
+      printf("Debug: Printing cell at (%zu, %zu)\n", i, j);
+
+      char* cell_content = grid_get_cell(grid, i, j);
+      if (cell_content) {
+        fprintf(fd, "%s ", cell_content);
+        free(
+            cell_content); // Remember to free the memory allocated by grid_get_cell
+      } else {
+        fprintf(fd, "_ "); // Print placeholder for empty cells
       }
-      fprintf(fd, "%c", ' ');
     }
     fprintf(fd, "\n");
   }

@@ -10,10 +10,10 @@ sudoku: sudoku.o colors.o grid.o
 sudoku.o: sudoku.c sudoku.h
 	$(CC) $(CFLAGS) $(CPPFLAGS) -c $<
 
-colors.o: colors.c colors.h
+colors.o: colors.c ../include/colors.h
 	$(CC) $(CFLAGS) $(CPPFLAGS) -c $<
 
-grid.o: grid.c grid.h
+grid.o: grid.c ../include/grid.h
 	$(CC) $(CFLAGS) $(CPPFLAGS) -c $<
 
 clean:

@@ -5,6 +5,8 @@
 #define EMPTY_CELL    '_'
 
 #include <stdbool.h>
+#include <stddef.h>
+#include <stdio.h>
 
 static const char color_table[] = "123456789"
                                   "ABCDEFGHIJKLMNOPQRSTUVWXYZ"

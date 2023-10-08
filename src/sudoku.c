@@ -41,55 +41,56 @@ file_parser(char* filename) {
     return NULL;
   }
 
-  char first_row[MAX_GRID_SIZE];
+  // If the file is empty, exit
+  if (fseek(file, 0, SEEK_END) == 0) {
+    long size = ftell(file);
+    if (size == 0) {
+      fprintf(stderr, "Error: File is empty.\n");
+      fclose(file);
+      return NULL;
+    }
+  }
+
+  char row[MAX_GRID_SIZE];
   size_t idx = 0;
   char ch;
 
-  while ((ch = fgetc(file)) != EOF && ch != '\n') {
-    if (ch == '#') { // Ignore the rest of the line after '#'
-      while ((ch = fgetc(file)) != EOF && ch != '\n')
-        ;
-      break;
-    }
-    if (ch != ' ' && ch != '\t') {
+  grid_t* grid = NULL;
+
+  size_t row_count = 0;
+  while ((ch = fgetc(file)) != EOF) {
+    if (ch == '\n') {
+      if (row_count == 0) {
+        // Initialize the grid after reading the first row
+        grid = grid_alloc(idx);
+        if (!grid) {
+          fprintf(stderr, "Error allocating memory for grid.\n");
+          fclose(file);
+          return NULL;
+        }
+      }
+
+      // Populate the grid cells for the current row
+      for (size_t i = 0; i < idx; i++) {
+        if (!grid_check_char(grid, row[i])) {
+          fprintf(stderr, "Error: Invalid character '%c' in grid.\n", row[i]);
+          grid_free(grid);
+          fclose(file);
+          return NULL;
+        }
+        grid_set_cell(grid, row_count, i, row[i]);
+      }
+
+      row_count++;
+      idx = 0; // Reset idx for the next row
+    } else if (ch != ' ' && ch != '\t') {
       if (idx >= MAX_GRID_SIZE) {
         fprintf(stderr, "Error: Row has too many columns.\n");
         fclose(file);
         return NULL;
       }
-      first_row[idx++] = ch;
+      row[idx++] = ch;
     }
-  }
-
-  grid_t* grid = grid_alloc(idx);
-
-  if (!grid) {
-    fprintf(stderr, "Error allocating memory for grid.\n");
-    fclose(file);
-    return NULL;
-  }
-  for (size_t i = 0; i < idx; i++) {
-    if (!grid_check_char(grid, first_row[i])) {
-      fprintf(stderr, "Error: Invalid character '%c' in grid.\n", first_row[i]);
-      grid_free(grid);
-      fclose(file);
-      return NULL;
-    }
-    grid_set_cell(grid, 0, i, first_row[i]);
-  }
-
-  size_t row_count = 1;
-  while ((ch = fgetc(file)) != EOF) {
-    if (ch == '\n') {
-      row_count++;
-    }
-  }
-
-  if (row_count != grid_get_size(grid)) {
-    fprintf(stderr, "Error: Grid does not have the right number of rows.\n");
-    grid_free(grid);
-    fclose(file);
-    return NULL;
   }
 
   fclose(file);
@@ -166,7 +167,7 @@ main(int argc, char* argv[]) {
           printf("generate grid of size 9x9\n");
           exit(EXIT_SUCCESS);
         }
-        if (!check_grid_size(atoi(optarg))) {
+        if (!grid_check_size(atoi(optarg))) {
           errx(EXIT_FAILURE, "error: invalid grid size: %s", optarg);
         }
         printf("generate grid of size %dx%d\n", atoi(optarg), atoi(optarg));

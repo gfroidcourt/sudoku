@@ -147,7 +147,7 @@ colors_random(const colors_t colors) {
     return 0; // Return empty set if colors is empty
   }
 
-  size_t random_index = random() % count; // Generate random index
+  size_t random_index = rand() % count; // Generate random index
   size_t found_colors = 0;
 
   for (size_t i = 0; i < MAX_COLORS; i++) {

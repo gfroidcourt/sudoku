@@ -1,6 +1,8 @@
 #ifndef COLORS_H
 #define COLORS_H
 
+#include <stdbool.h>
+#include <stddef.h>
 #include <stdint.h>
 
 // Define the maximum color number
