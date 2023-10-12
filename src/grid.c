@@ -48,6 +48,10 @@ grid_check_char(const grid_t* grid, const char c) {
 
 grid_t*
 grid_alloc(size_t size) {
+  if (size == 0 || !grid_check_size(size)) {
+    fprintf(stderr, "Invalid grid size: %zu\n", size);
+    return NULL;
+  }
   grid_t* grid = malloc(sizeof(grid_t));
   grid->size = size;
   grid->cells = malloc(size * sizeof(colors_t*));
@@ -59,6 +63,9 @@ grid_alloc(size_t size) {
 
 void
 grid_free(grid_t* grid) {
+  if (!grid) {
+    return NULL;
+  }
   for (size_t i = 0; i < grid->size; ++i) {
     free(grid->cells[i]);
   }
@@ -74,15 +81,12 @@ grid_print(const grid_t* grid, FILE* fd) {
 
   for (size_t i = 0; i < grid_get_size(grid); i++) {
     for (size_t j = 0; j < grid_get_size(grid); j++) {
-      printf("Debug: Printing cell at (%zu, %zu)\n", i, j);
-
       char* cell_content = grid_get_cell(grid, i, j);
       if (cell_content) {
         fprintf(fd, "%s ", cell_content);
-        free(
-            cell_content); // Remember to free the memory allocated by grid_get_cell
+        free(cell_content);
       } else {
-        fprintf(fd, "_ "); // Print placeholder for empty cells
+        fprintf(fd, "%c ", EMPTY_CELL);
       }
     }
     fprintf(fd, "\n");
@@ -101,6 +105,7 @@ grid_check_size(const size_t size) {
     case 49:
     case 64:
       return true;
+
     default:
       return false;
   }
@@ -112,13 +117,12 @@ grid_copy(const grid_t* grid) {
     return NULL;
   }
 
-  // Allocate memory for the new grid using grid_alloc
   grid_t* new_grid = grid_alloc(grid->size);
+
   if (!new_grid) {
     return NULL;
   }
 
-  // Copy the content of each cell
   for (size_t i = 0; i < grid->size; i++) {
     for (size_t j = 0; j < grid->size; j++) {
       new_grid->cells[i][j] = grid->cells[i][j];
@@ -134,16 +138,13 @@ grid_get_cell(const grid_t* grid, const size_t row, const size_t column) {
     return NULL;
   }
 
-  // Get the content of the cell
   char cell_content = grid->cells[row][column];
 
-  // Allocate memory for the string (content + null terminator)
   char* cell_str = (char*)malloc(2 * sizeof(char));
   if (!cell_str) {
     return NULL;
   }
 
-  // Store the content in the string and null-terminate it
   cell_str[0] = cell_content;
   cell_str[1] = '\0';
 
@@ -153,7 +154,7 @@ grid_get_cell(const grid_t* grid, const size_t row, const size_t column) {
 size_t
 grid_get_size(const grid_t* grid) {
   if (!grid) {
-    return 0; // Return 0 if the grid is NULL
+    return 0;
   }
   return grid->size;
 }
@@ -162,9 +163,8 @@ void
 grid_set_cell(grid_t* grid, const size_t row, const size_t column,
               const char color) {
   if (!grid || row >= grid->size || column >= grid->size) {
-    return; // Check for valid grid and indices
+    return;
   }
 
-  grid->cells[row][column] =
-      color; // Set the cell content to the specified color
+  grid->cells[row][column] = color;
 }

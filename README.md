@@ -1,6 +1,12 @@
 # sudoku
 
+# Tests
 
+I've created a test_suite to run all the tests. To run it, you need to run the following command in the root directory of the project:
+
+```bash
+sh -c test/test_suite.sh
+```
 
 ## Getting started
 

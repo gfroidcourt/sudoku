@@ -8,7 +8,7 @@ reset=`tput sgr0`
 blue=`tput setaf 4`
 bold=`tput bold`
 
-TEST_FILES="tests/grid-*.sku"
+TEST_FILES="tests/grid_tests/grid-*.sku"
 
 for f in $TEST_FILES
 do
@@ -25,5 +25,30 @@ do
         echo "$output"
         echo
     fi 
+done
 
+TEST_FILES="tests/module_tests/*_tests.c"
+
+for test_file in $TEST_FILES 
+do
+    base_name=$(basename "$test_file" .c)
+
+    gcc -I include -c "$test_file" && gcc -o "$base_name" "${base_name}.o" src/grid.o src/colors.o
+
+    if [ $? -eq 0 ]; then
+        if [ $? -eq 0 ]; then
+            output=$(./"$base_name" 2> /dev/null)
+            if echo "$output" | grep -q "failed"; then
+                echo "$bold$red[FAIL]$reset $blue--$reset $blue$base_name$reset"
+                echo "$output" | grep "failed"
+            else
+                echo "$bold$green[OK]$reset $blue--$reset $blue$base_name$reset"
+            fi
+        fi
+
+        rm "$base_name"
+        rm "${base_name}.o"
+    else
+        echo "${RED}Compilation of ${base_name} failed${RESET}"
+    fi
 done
