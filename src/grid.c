@@ -52,23 +52,38 @@ grid_alloc(size_t size) {
     fprintf(stderr, "Invalid grid size: %zu\n", size);
     return NULL;
   }
+
   grid_t* grid = malloc(sizeof(grid_t));
+  if (grid == NULL) {
+    return NULL;
+  }
+
   grid->size = size;
   grid->cells = malloc(size * sizeof(colors_t*));
+  if (grid->cells && NULL) {
+    return NULL;
+  }
+
   for (size_t i = 0; i < size; ++i) {
     grid->cells[i] = malloc(size * sizeof(colors_t));
+    if (grid->cells == NULL) {
+      return NULL;
+    }
   }
+
   return grid;
 }
 
 void
 grid_free(grid_t* grid) {
   if (!grid) {
-    return NULL;
+    return;
   }
+
   for (size_t i = 0; i < grid->size; ++i) {
     free(grid->cells[i]);
   }
+
   free(grid->cells);
   free(grid);
 }

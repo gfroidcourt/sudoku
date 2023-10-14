@@ -135,16 +135,13 @@ file_parser(char* filename) {
       fprintf(stderr, "Error: grid has %zu extra line(s)  \n",
               row_count - grid_size);
     }
-
-    // Check for EOF but no \n
-
-    grid_free(grid);
     fclose(file);
     exit(EXIT_FAILURE);
   }
 
+  // If the file ends with EOF but no \n, it is valid
+
   fclose(file);
-  grid_print(grid, stdout);
   return grid;
 }
 
@@ -155,22 +152,22 @@ main(int argc, char* argv[]) {
   bool unique = false;
   bool generate = false;
   int result;
+  char* filename = NULL;
 
-  const struct option long_options[] = {
-      {"help", no_argument, NULL, 'h'},
-      {"all", no_argument, NULL, 'a'},
-      {"version", no_argument, NULL, 'V'},
-      {"generate", optional_argument, NULL, 'g'},
-      {"unique", no_argument, NULL, 'u'},
-      {"output", required_argument, NULL, 'o'},
-      {"verbose", no_argument, NULL, 'v'},
-      {NULL, 0, NULL, 0}};
+  const struct option options[] = {{"help", no_argument, NULL, 'h'},
+                                   {"all", no_argument, NULL, 'a'},
+                                   {"version", no_argument, NULL, 'V'},
+                                   {"generate", optional_argument, NULL, 'g'},
+                                   {"unique", no_argument, NULL, 'u'},
+                                   {"output", required_argument, NULL, 'o'},
+                                   {"verbose", no_argument, NULL, 'v'},
+                                   {NULL, 0, NULL, 0}};
 
   output = stdout;
-  optc = getopt_long(argc, argv, "havg::uo:V", long_options, NULL);
+
   char* program_name = basename(argv[0]);
 
-  while (optc != -1) {
+  while ((optc = getopt_long(argc, argv, "havg::uo:V", options, NULL)) != -1) {
     switch (optc) {
       case 'h':
         print_help(program_name);
@@ -185,10 +182,12 @@ main(int argc, char* argv[]) {
 
       case 'v':
         verbose = true;
-        exit(EXIT_SUCCESS);
+        break;
 
       case 'o':
-        output = fopen(optarg, "w");
+        // output = fopen(optarg, "w");
+        filename = optarg;
+
         if (output == NULL) {
           err(EXIT_FAILURE, "Error opening file: %s", optarg);
         }
@@ -233,18 +232,27 @@ main(int argc, char* argv[]) {
     }
   }
 
-  if (optind >= argc) {
+  if (optind > argc) {
     fprintf(stderr, "Error: no input file specified.\n");
     fprintf(stderr, "Try '%s --help' for more information.\n", argv[0]);
     exit(EXIT_FAILURE);
   }
 
-  if (output != stdout) {
-    fclose(output);
+  if (filename != NULL) {
+    output = fopen(filename, "w");
+    if (output == NULL) {
+      err(EXIT_FAILURE, "Error opening file: %s", filename);
+    }
   }
 
   for (int i = optind; i < argc; ++i) {
     grid_t* grid = file_parser(argv[i]);
+    grid_print(grid, output);
+    grid_free(grid);
+  }
+
+  if (output != stdout) {
+    fclose(output);
   }
   return EXIT_SUCCESS;
 }
