@@ -1,6 +1,6 @@
 CFLAGS = -std=c11 -Wall -Wextra -g -pedantic 
-CPPFLAGS = -I../include -DDEBUG
-LDFLAGS = 
+CPPFLAGS = -I../include -DDEBUG 
+LDFLAGS = -lm
 
 all: sudoku
 

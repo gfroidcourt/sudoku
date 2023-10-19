@@ -4,6 +4,7 @@
 
 #include <string.h>
 
+#include <math.h>
 #include <stdbool.h>
 #include <stddef.h>
 #include <stdio.h>
@@ -182,4 +183,60 @@ grid_set_cell(grid_t* grid, const size_t row, const size_t column,
   }
 
   grid->cells[row][column] = color;
+}
+
+bool
+subgrid_apply(grid_t* grid,
+              bool (*func)(colors_t subgrid[], const size_t size)) {
+  size_t size = grid_get_size(grid);
+  colors_t subgrid[size];
+
+  // Apply func to each row
+  for (size_t i = 0; i < size; ++i) {
+    for (size_t j = 0; j < size; ++j) {
+      subgrid[j] = grid_get_cell(grid, i, j);
+    }
+    if (!func(subgrid, size)) {
+      return false;
+    }
+  }
+
+  // Apply func to each column
+  for (size_t j = 0; j < size; ++j) {
+    for (size_t i = 0; i < size; ++i) {
+      subgrid[i] = grid_get_cell(grid, i, j);
+    }
+    if (!func(subgrid, size)) {
+      return false;
+    }
+  }
+
+  // Apply func to each block
+  size_t block_size = sqrt(size);
+  for (size_t bi = 0; bi < block_size; ++bi) {
+    for (size_t bj = 0; bj < block_size; ++bj) {
+      size_t index = 0;
+      for (size_t i = 0; i < block_size; ++i) {
+        for (size_t j = 0; j < block_size; ++j) {
+          subgrid[index++] =
+              grid_get_cell(grid, bi * block_size + i, bj * block_size + j);
+        }
+      }
+      if (!func(subgrid, size)) {
+        return false;
+      }
+    }
+  }
+
+  return true;
+}
+
+bool
+grid_is_solved(grid_t* grid) {
+  return subgrid_apply(grid, &subgrid_is_solved);
+}
+
+bool
+grid_is_consistent(grid_t* grid) {
+  return subgrid_apply(grid, &subgrid_consistency);
 }

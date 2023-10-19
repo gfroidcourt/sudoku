@@ -1,6 +1,7 @@
 #ifndef GRID_H
 #define GRID_H
 
+#include <math.h>
 #include <stdbool.h>
 #include <stddef.h>
 #include <stdio.h>
@@ -93,5 +94,9 @@ size_t grid_get_size(const grid_t* grid);
  */
 void grid_set_cell(grid_t* grid, const size_t row, const size_t column,
                    const char color);
+
+bool grid_is_solved(grid_t* grid);
+
+bool grid_is_consistent(grid_t* grid);
 
 #endif /* GRID_H */

@@ -247,12 +247,26 @@ main(int argc, char* argv[]) {
 
   for (int i = optind; i < argc; ++i) {
     grid_t* grid = file_parser(argv[i]);
+
     grid_print(grid, output);
+
+    if (!grid_is_consistent(grid)) {
+      printf("The grid is inconsistent!\n");
+      grid_free(grid);
+      return EXIT_FAILURE;
+
+    } else if (grid_is_solved(grid)) {
+      printf("The grid is solved!\n");
+
+    } else {
+      printf("The grid is consistent but not solved.\n");
+    }
     grid_free(grid);
   }
 
   if (output != stdout) {
     fclose(output);
   }
+
   return EXIT_SUCCESS;
 }
