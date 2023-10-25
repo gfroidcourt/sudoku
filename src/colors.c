@@ -1,16 +1,18 @@
 #include "colors.h"
 
+#include "string.h"
 #include <stdbool.h>
 #include <stdio.h>
 #include <stdlib.h> // for random()
 
 colors_t
 colors_full(const size_t size) {
+  static const int BITS_PER_BYTE = 8;
   if (size == 0) {
     return 0ULL;
   }
 
-  if (size >= sizeof(colors_t) * 8) {
+  if (size >= sizeof(colors_t) * BITS_PER_BYTE) {
     return (colors_t)-1;
   }
 
@@ -133,6 +135,10 @@ colors_leftmost(const colors_t colors) {
   return 0;
 }
 
+/**
+ * @brief Returns a random color from the provided set of colors.
+ * zefjzefjezlfjfezf fe
+ */
 colors_t
 colors_random(const colors_t colors) {
   size_t count = colors_count(colors);
@@ -153,4 +159,32 @@ colors_random(const colors_t colors) {
     }
   }
   return 0;
+}
+
+bool
+subgrid_consistency(colors_t subgrid[], const size_t size) {
+  colors_t all_colors = colors_full(size);
+  colors_t seen_colors = colors_empty();
+
+  // There is no empty cell
+  for (size_t i = 0; i < size; ++i) {
+    if (subgrid[i] == colors_empty()) {
+      return false;
+    }
+
+    // There is no two singletons with the same color
+    if (colors_is_singleton(subgrid[i])
+        && colors_is_in(seen_colors, colors_rightmost(subgrid[i]))) {
+      return false;
+    }
+
+    seen_colors = colors_or(seen_colors, subgrid[i]);
+  }
+
+  // Each color must appears at least once
+  if (!colors_is_subset(all_colors, seen_colors)) {
+    return false;
+  }
+
+  return true;
 }

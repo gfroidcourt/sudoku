@@ -61,8 +61,8 @@ file_parser(char* filename) {
 
   grid_t* grid = NULL;
   size_t expected_row_length = 0;
-
   size_t row_count = 0;
+
   while ((c = fgetc(file)) != EOF) {
     if (c == '#') {
       while ((c = fgetc(file)) != EOF && c != '\n')
@@ -117,7 +117,6 @@ file_parser(char* filename) {
     }
   }
 
-  // Check if the last row is full
   if (!grid) {
     fprintf(stderr, "Error: No valid grid found in the file.\n");
     exit(EXIT_FAILURE);
@@ -138,8 +137,6 @@ file_parser(char* filename) {
     fclose(file);
     exit(EXIT_FAILURE);
   }
-
-  // If the file ends with EOF but no \n, it is valid
 
   fclose(file);
   return grid;
@@ -232,7 +229,7 @@ main(int argc, char* argv[]) {
     }
   }
 
-  if (optind > argc) {
+  if (optind >= argc) {
     fprintf(stderr, "Error: no input file specified.\n");
     fprintf(stderr, "Try '%s --help' for more information.\n", argv[0]);
     exit(EXIT_FAILURE);
@@ -247,12 +244,24 @@ main(int argc, char* argv[]) {
 
   for (int i = optind; i < argc; ++i) {
     grid_t* grid = file_parser(argv[i]);
+
     grid_print(grid, output);
+
+    if (!grid_is_consistent(grid)) {
+      printf("The grid is inconsistent!\n");
+      grid_free(grid);
+      return EXIT_FAILURE;
+
+    } else {
+      printf("The grid is consistent.\n");
+    }
+
     grid_free(grid);
   }
 
   if (output != stdout) {
     fclose(output);
   }
+
   return EXIT_SUCCESS;
 }

@@ -33,7 +33,7 @@ for test_file in $TEST_FILES
 do
     base_name=$(basename "$test_file" .c)
 
-    gcc -I include -c "$test_file" && gcc -o "$base_name" "${base_name}.o" src/grid.o src/colors.o
+    gcc -I include -c "$test_file" && gcc -o "$base_name" "${base_name}.o" src/grid.o src/colors.o -lm
 
     if [ $? -eq 0 ]; then
         if [ $? -eq 0 ]; then
