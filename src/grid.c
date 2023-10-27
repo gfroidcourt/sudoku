@@ -2,13 +2,12 @@
 
 #include <colors.h>
 
-#include <string.h>
-
 #include <math.h>
 #include <stdbool.h>
 #include <stddef.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
 
 /* Internat structure (hidden from outside) for a sudoku grid*/
 struct _grid_t {
@@ -72,6 +71,11 @@ grid_alloc(size_t size) {
     }
   }
 
+  for (size_t i; i < size; i++) {
+    for (size_t j; j < size; j++) {
+      grid->cells[i][j] = colors_full(size);
+    }
+  }
   return grid;
 }
 
@@ -95,8 +99,10 @@ grid_print(const grid_t* grid, FILE* fd) {
     return;
   }
 
-  for (size_t i = 0; i < grid_get_size(grid); i++) {
-    for (size_t j = 0; j < grid_get_size(grid); j++) {
+  size_t grid_size = grid->size;
+
+  for (size_t i = 0; i < grid_size; i++) {
+    for (size_t j = 0; j < grid_size; j++) {
       char* cell_content = grid_get_cell(grid, i, j);
       if (cell_content) {
         fprintf(fd, "%s ", cell_content);
@@ -134,7 +140,6 @@ grid_copy(const grid_t* grid) {
   }
 
   grid_t* new_grid = grid_alloc(grid->size);
-
   if (!new_grid) {
     return NULL;
   }
@@ -148,23 +153,59 @@ grid_copy(const grid_t* grid) {
   return new_grid;
 }
 
+static colors_t
+convert_character_to_color(char character, size_t grid_size) {
+
+  for (size_t i = 0; i < grid_size; i++) {
+    if (color_table[i] == character) {
+      return colors_set(i);
+    }
+  }
+  return colors_full(grid_size);
+}
+
+static char*
+convert_color_to_character(colors_t color) {
+
+  char* string_to_return = malloc(colors_count(color) + 1);
+  if (!string_to_return) {
+    return NULL;
+  }
+
+  size_t index = 0;
+
+  for (size_t i = 0; i < MAX_COLORS; i++) {
+    if (colors_is_in(color, i)) {
+      string_to_return[index] = color_table[i];
+      index++;
+    }
+  }
+
+  string_to_return[index] = '\0';
+
+  return string_to_return;
+}
+
 char*
 grid_get_cell(const grid_t* grid, const size_t row, const size_t column) {
   if (!grid || row >= grid->size || column >= grid->size) {
     return NULL;
   }
 
-  char cell_content = grid->cells[row][column];
+  if (grid->cells[row][column] == colors_full(grid->size)) {
+    char* string_to_return = malloc(2);
 
-  char* cell_str = (char*)malloc(2 * sizeof(char));
-  if (!cell_str) {
-    return NULL;
+    if (!string_to_return) {
+      return NULL;
+    }
+
+    string_to_return[0] = EMPTY_CELL;
+    string_to_return[1] = '\0';
+
+    return string_to_return;
   }
 
-  cell_str[0] = cell_content;
-  cell_str[1] = '\0';
-
-  return cell_str;
+  return convert_color_to_character(grid->cells[row][column]);
 }
 
 size_t
@@ -182,61 +223,84 @@ grid_set_cell(grid_t* grid, const size_t row, const size_t column,
     return;
   }
 
-  grid->cells[row][column] = color;
-}
-
-bool
-subgrid_apply(grid_t* grid,
-              bool (*func)(colors_t subgrid[], const size_t size)) {
-  size_t size = grid_get_size(grid);
-  colors_t subgrid[size];
-
-  // Apply func to each row
-  for (size_t i = 0; i < size; ++i) {
-    for (size_t j = 0; j < size; ++j) {
-      subgrid[j] = grid_get_cell(grid, i, j);
-    }
-    if (!func(subgrid, size)) {
-      return false;
-    }
-  }
-
-  // Apply func to each column
-  for (size_t j = 0; j < size; ++j) {
-    for (size_t i = 0; i < size; ++i) {
-      subgrid[i] = grid_get_cell(grid, i, j);
-    }
-    if (!func(subgrid, size)) {
-      return false;
-    }
-  }
-
-  // Apply func to each block
-  size_t block_size = sqrt(size);
-  for (size_t bi = 0; bi < block_size; ++bi) {
-    for (size_t bj = 0; bj < block_size; ++bj) {
-      size_t index = 0;
-      for (size_t i = 0; i < block_size; ++i) {
-        for (size_t j = 0; j < block_size; ++j) {
-          subgrid[index++] =
-              grid_get_cell(grid, bi * block_size + i, bj * block_size + j);
-        }
-      }
-      if (!func(subgrid, size)) {
-        return false;
-      }
-    }
-  }
-
-  return true;
+  grid->cells[row][column] = convert_character_to_color(color, grid->size);
 }
 
 bool
 grid_is_solved(grid_t* grid) {
-  return subgrid_apply(grid, &subgrid_is_solved);
+  for (size_t i = 0; i < grid->size; i++) {
+    for (size_t j = 0; j < grid->size; j++) {
+      if (!colors_is_singleton(grid->cells[i][j])) {
+        return false;
+      }
+    }
+  }
+  return true;
+}
+
+void
+fill_subgrid(const grid_t* grid, colors_t* subgrid, const char* type,
+             size_t index) {
+  size_t size = grid_get_size(grid);
+  size_t block_size = sqrt(size);
+  char* str = NULL;
+
+  if (strcmp(type, "row") == 0) {
+    printf("row %zu: ", index);
+    for (size_t j = 0; j < size; ++j) {
+      subgrid[j] = grid->cells[index][j];
+      str = convert_color_to_character(subgrid[j]);
+      printf("(%zu,%zu) = '%s' ", index, j, str);
+      free(str);
+    }
+    printf("\n");
+
+  } else if (strcmp(type, "column") == 0) {
+    printf("column %zu: ", index);
+    for (size_t i = 0; i < size; ++i) {
+      subgrid[i] = grid->cells[i][index];
+      str = convert_color_to_character(subgrid[i]);
+      printf("(%zu,%zu) = '%s' ", i, index, str);
+      free(str);
+    }
+    printf("\n");
+
+  } else if (strcmp(type, "block") == 0) {
+    printf("block %zu: ", index);
+    size_t start_row = (index / block_size) * block_size;
+    size_t start_col = (index % block_size) * block_size;
+    size_t k = 0;
+    for (size_t i = start_row; i < start_row + block_size; ++i) {
+      for (size_t j = start_col; j < start_col + block_size; ++j) {
+        subgrid[k++] = grid->cells[i][j];
+        str = convert_color_to_character(subgrid[k - 1]);
+        printf("(%zu,%zu) = '%s' ", i, j, str);
+        free(str);
+      }
+    }
+    printf("\n");
+  }
 }
 
 bool
 grid_is_consistent(grid_t* grid) {
-  return subgrid_apply(grid, &subgrid_consistency);
+  size_t size = grid->size;
+  colors_t subgrid[size];
+
+  // Check rows
+  for (size_t i = 0; i < size; ++i) {
+    fill_subgrid(grid, subgrid, "row", i);
+  }
+
+  // Check columns
+  for (size_t i = 0; i < size; ++i) {
+    fill_subgrid(grid, subgrid, "column", i);
+  }
+
+  // Check blocks
+  for (size_t i = 0; i < size; ++i) {
+    fill_subgrid(grid, subgrid, "block", i);
+  }
+
+  return true;
 }
