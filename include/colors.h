@@ -163,4 +163,7 @@ colors_t colors_leftmost(const colors_t colors);
  */
 colors_t colors_random(const colors_t colors);
 
+bool subgrid_consistency(colors_t subgrid[], const size_t size);
+bool subgrid_is_solved(colors_t subgrid[], const size_t size);
+
 #endif /* COLORS_H */

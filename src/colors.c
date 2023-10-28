@@ -169,3 +169,50 @@ colors_random(const colors_t colors) {
   }
   return 0;
 }
+
+bool
+subgrid_consistency(colors_t subgrid[], const size_t size) {
+  colors_t all_colors = colors_empty();
+
+  for (size_t i = 0; i < size; ++i) {
+    if (subgrid[i] == colors_empty()) {
+      return false; // Empty cell found
+    }
+
+    if (colors_is_singleton(subgrid[i])
+        && colors_is_in(all_colors, subgrid[i])) {
+      return false; // Duplicate singleton found
+    }
+
+    all_colors = colors_or(all_colors, subgrid[i]);
+  }
+
+  // Check if each color appears at least once
+  for (size_t i = 0; i < size; ++i) {
+    if (!colors_is_in(all_colors, colors_set(i))) {
+      return false; // A color is missing
+    }
+  }
+
+  return true; // Subgrid is consistent
+}
+
+bool
+subgrid_is_solved(colors_t subgrid[], const size_t size) {
+  colors_t seen_colors = 0;
+
+  for (size_t i = 0; i < size; ++i) {
+    if (!colors_is_singleton(subgrid[i])) {
+      return false;
+    }
+
+    colors_t singleton_color = subgrid[i];
+    if (seen_colors & singleton_color) {
+      return false;
+    }
+
+    seen_colors |= singleton_color; // Mark the color as found
+  }
+
+  return true;
+}
