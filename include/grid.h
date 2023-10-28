@@ -18,6 +18,8 @@ static const char color_table[] = "123456789"
 /* Sudoku grid (forward declaration to hide the implementation)*/
 typedef struct _grid_t grid_t;
 
+typedef enum { grid_solved, grid_unsolved, grid_inconsistent } status_t;
+
 /**
  * @brief Allocates memory for a new grid of the specified size.
  *
@@ -101,4 +103,5 @@ void grid_set_cell(grid_t* grid, const size_t row, const size_t column,
 bool grid_is_solved(grid_t* grid);
 
 bool grid_is_consistent(grid_t* grid);
+
 #endif /* GRID_H */

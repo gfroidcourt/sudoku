@@ -3,7 +3,6 @@
 #include "string.h"
 #include <stdbool.h>
 #include <stdio.h>
-#include <stdlib.h> // for random()
 
 colors_t
 colors_full(const size_t size) {
@@ -135,19 +134,29 @@ colors_leftmost(const colors_t colors) {
   return 0;
 }
 
+static colors_t
+prng(uint64_t* seed) {
+  uint64_t A = 6364136223846793005ULL;
+  uint64_t C = 1ULL;
+  *seed = *seed * A + C;
+  return *seed;
+}
+
 /**
  * @brief Returns a random color from the provided set of colors.
- * zefjzefjezlfjfezf fe
  */
 colors_t
 colors_random(const colors_t colors) {
+  static uint64_t seed;
+
   size_t count = colors_count(colors);
 
   if (count == 0) {
     return 0;
   }
 
-  size_t random_index = rand() % count;
+  uint64_t randomNumber = prng(&seed);
+  size_t random_index = randomNumber % count;
   size_t found_colors = 0;
 
   for (size_t i = 0; i < MAX_COLORS; i++) {
@@ -159,32 +168,4 @@ colors_random(const colors_t colors) {
     }
   }
   return 0;
-}
-
-bool
-subgrid_consistency(colors_t subgrid[], const size_t size) {
-  colors_t all_colors = colors_full(size);
-  colors_t seen_colors = colors_empty();
-
-  // There is no empty cell
-  for (size_t i = 0; i < size; ++i) {
-    if (subgrid[i] == colors_empty()) {
-      return false;
-    }
-
-    // There is no two singletons with the same color
-    if (colors_is_singleton(subgrid[i])
-        && colors_is_in(seen_colors, colors_rightmost(subgrid[i]))) {
-      return false;
-    }
-
-    seen_colors = colors_or(seen_colors, subgrid[i]);
-  }
-
-  // Each color must appears at least once
-  if (!colors_is_subset(all_colors, seen_colors)) {
-    return false;
-  }
-
-  return true;
 }

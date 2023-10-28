@@ -42,19 +42,6 @@ file_parser(char* filename) {
     exit(EXIT_FAILURE);
   }
 
-  // Check if file is empty
-  if (fseek(file, 0, SEEK_END) == 0) {
-    long size = ftell(file);
-    if (size == 0) {
-      fprintf(stderr, "Error: File \"%s\" is empty.\n", filename);
-      fclose(file);
-      exit(EXIT_FAILURE);
-    }
-  }
-
-  // Reset the file pointer to the beginning after checking for emptiness
-  rewind(file);
-
   char row[MAX_GRID_SIZE];
   size_t index = 0;
   char c;
@@ -63,6 +50,8 @@ file_parser(char* filename) {
   size_t expected_row_length = 0;
   size_t row_count = 0;
 
+  bool end_of_line = false;
+
   while ((c = fgetc(file)) != EOF) {
     if (c == '#') {
       while ((c = fgetc(file)) != EOF && c != '\n')
@@ -70,12 +59,18 @@ file_parser(char* filename) {
       continue;
 
     } else if (c == '\n') {
+      end_of_line = true;
       if (index == 0) {
         continue;
       }
 
       if (row_count == 0) {
-        // First row
+        if (index == 0) {
+          fprintf(stderr, "Error: Empty file.\n");
+          fclose(file);
+          exit(EXIT_FAILURE);
+        }
+
         grid = grid_alloc(index);
         if (!grid) {
           fclose(file);
@@ -122,11 +117,16 @@ file_parser(char* filename) {
     exit(EXIT_FAILURE);
   }
 
-  // Check for missing or extra lines
   size_t grid_size = grid_get_size(grid);
 
-  if (grid && row_count != grid_size) {
+  if (!end_of_line) {
+    printf("row_count: %zu\n", row_count);
+    row_count++;
+    printf("row_count: %zu\n", row_count);
+  }
 
+  // Check for missing or extra lines
+  if (grid && row_count != grid_size) {
     if (row_count < grid_size) {
       fprintf(stderr, "Error: grid has %zu missing lines(s)  \n",
               grid_size - row_count);

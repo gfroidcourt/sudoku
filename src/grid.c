@@ -71,6 +71,11 @@ grid_alloc(size_t size) {
     }
   }
 
+  for (size_t i; i < size; i++) {
+    for (size_t j; j < size; j++) {
+      grid->cells[i][j] = colors_full(size);
+    }
+  }
   return grid;
 }
 
@@ -94,8 +99,10 @@ grid_print(const grid_t* grid, FILE* fd) {
     return;
   }
 
-  for (size_t i = 0; i < grid_get_size(grid); i++) {
-    for (size_t j = 0; j < grid_get_size(grid); j++) {
+  size_t grid_size = grid->size;
+
+  for (size_t i = 0; i < grid_size; i++) {
+    for (size_t j = 0; j < grid_size; j++) {
       char* cell_content = grid_get_cell(grid, i, j);
       if (cell_content) {
         fprintf(fd, "%s ", cell_content);
@@ -146,23 +153,59 @@ grid_copy(const grid_t* grid) {
   return new_grid;
 }
 
+static colors_t
+convert_character_to_color(char character, size_t grid_size) {
+
+  for (size_t i = 0; i < grid_size; i++) {
+    if (color_table[i] == character) {
+      return colors_set(i);
+    }
+  }
+  return colors_full(grid_size);
+}
+
+static char*
+convert_color_to_character(colors_t color) {
+
+  char* string_to_return = malloc(colors_count(color) + 1);
+  if (!string_to_return) {
+    return NULL;
+  }
+
+  size_t index = 0;
+
+  for (size_t i = 0; i < MAX_COLORS; i++) {
+    if (colors_is_in(color, i)) {
+      string_to_return[index] = color_table[i];
+      index++;
+    }
+  }
+
+  string_to_return[index] = '\0';
+
+  return string_to_return;
+}
+
 char*
 grid_get_cell(const grid_t* grid, const size_t row, const size_t column) {
   if (!grid || row >= grid->size || column >= grid->size) {
     return NULL;
   }
 
-  char cell_content = grid->cells[row][column];
+  if (grid->cells[row][column] == colors_full(grid->size)) {
+    char* string_to_return = malloc(2);
 
-  char* cell_str = malloc(2 * sizeof(char));
-  if (!cell_str) {
-    return NULL;
+    if (!string_to_return) {
+      return NULL;
+    }
+
+    string_to_return[0] = EMPTY_CELL;
+    string_to_return[1] = '\0';
+
+    return string_to_return;
   }
 
-  cell_str[0] = cell_content;
-  cell_str[1] = '\0';
-
-  return cell_str;
+  return convert_color_to_character(grid->cells[row][column]);
 }
 
 size_t
@@ -180,12 +223,11 @@ grid_set_cell(grid_t* grid, const size_t row, const size_t column,
     return;
   }
 
-  grid->cells[row][column] = color;
+  grid->cells[row][column] = convert_character_to_color(color, grid->size);
 }
 
 bool
 grid_is_solved(grid_t* grid) {
-  // Check if the grid has only singletons
   for (size_t i = 0; i < grid->size; i++) {
     for (size_t j = 0; j < grid->size; j++) {
       if (!colors_is_singleton(grid->cells[i][j])) {
@@ -200,22 +242,29 @@ void
 fill_subgrid(const grid_t* grid, colors_t* subgrid, const char* type,
              size_t index) {
   size_t size = grid_get_size(grid);
-  size_t block_size = sqrt(size); // Assuming the grid size is a perfect square
+  size_t block_size = sqrt(size);
+  char* str = NULL;
 
   if (strcmp(type, "row") == 0) {
     printf("row %zu: ", index);
     for (size_t j = 0; j < size; ++j) {
       subgrid[j] = grid->cells[index][j];
-      printf("(%zu,%zu) = '%ld' ", index, j, subgrid[j]);
+      str = convert_color_to_character(subgrid[j]);
+      printf("(%zu,%zu) = '%s' ", index, j, str);
+      free(str);
     }
     printf("\n");
+
   } else if (strcmp(type, "column") == 0) {
     printf("column %zu: ", index);
     for (size_t i = 0; i < size; ++i) {
       subgrid[i] = grid->cells[i][index];
-      printf("(%zu,%zu) = '%ld' ", i, index, subgrid[i]);
+      str = convert_color_to_character(subgrid[i]);
+      printf("(%zu,%zu) = '%s' ", i, index, str);
+      free(str);
     }
     printf("\n");
+
   } else if (strcmp(type, "block") == 0) {
     printf("block %zu: ", index);
     size_t start_row = (index / block_size) * block_size;
@@ -224,7 +273,9 @@ fill_subgrid(const grid_t* grid, colors_t* subgrid, const char* type,
     for (size_t i = start_row; i < start_row + block_size; ++i) {
       for (size_t j = start_col; j < start_col + block_size; ++j) {
         subgrid[k++] = grid->cells[i][j];
-        printf("(%zu,%zu) = '%ld' ", i, j, grid->cells[i][j]);
+        str = convert_color_to_character(subgrid[k - 1]);
+        printf("(%zu,%zu) = '%s' ", i, j, str);
+        free(str);
       }
     }
     printf("\n");
@@ -233,32 +284,28 @@ fill_subgrid(const grid_t* grid, colors_t* subgrid, const char* type,
 
 bool
 grid_is_consistent(grid_t* grid) {
-  size_t size = grid_get_size(grid);
-  colors_t subgrid[size];
+  size_t size = grid->size;
+
+  // Create the subgrid and allocate memory
+  colors_t* subgrid = malloc(size * sizeof(colors_t));
 
   // Check rows
   for (size_t i = 0; i < size; ++i) {
     fill_subgrid(grid, subgrid, "row", i);
-    if (!subgrid_consistency(subgrid, size)) {
-      return false;
-    }
   }
 
   // Check columns
   for (size_t i = 0; i < size; ++i) {
     fill_subgrid(grid, subgrid, "column", i);
-    if (!subgrid_consistency(subgrid, size)) {
-      return false;
-    }
   }
 
   // Check blocks
   for (size_t i = 0; i < size; ++i) {
     fill_subgrid(grid, subgrid, "block", i);
-    if (!subgrid_consistency(subgrid, size)) {
-      return false;
-    }
   }
+
+  // Free the memory
+  free(subgrid);
 
   return true;
 }
