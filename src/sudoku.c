@@ -42,27 +42,16 @@ file_parser(char* filename) {
     exit(EXIT_FAILURE);
   }
 
-  // Check if file is empty
-  if (fseek(file, 0, SEEK_END) == 0) {
-    long size = ftell(file);
-    if (size == 0) {
-      fprintf(stderr, "Error: File \"%s\" is empty.\n", filename);
-      fclose(file);
-      exit(EXIT_FAILURE);
-    }
-  }
-
-  // Reset the file pointer to the beginning after checking for emptiness
-  rewind(file);
-
   char row[MAX_GRID_SIZE];
   size_t index = 0;
   char c;
 
   grid_t* grid = NULL;
   size_t expected_row_length = 0;
-
   size_t row_count = 0;
+
+  bool end_of_line = false;
+
   while ((c = fgetc(file)) != EOF) {
     if (c == '#') {
       while ((c = fgetc(file)) != EOF && c != '\n')
@@ -70,12 +59,18 @@ file_parser(char* filename) {
       continue;
 
     } else if (c == '\n') {
+      end_of_line = true;
       if (index == 0) {
         continue;
       }
 
       if (row_count == 0) {
-        // First row
+        if (index == 0) {
+          fprintf(stderr, "Error: Empty file.\n");
+          fclose(file);
+          exit(EXIT_FAILURE);
+        }
+
         grid = grid_alloc(index);
         if (!grid) {
           fclose(file);
@@ -117,17 +112,21 @@ file_parser(char* filename) {
     }
   }
 
-  // Check if the last row is full
   if (!grid) {
     fprintf(stderr, "Error: No valid grid found in the file.\n");
     exit(EXIT_FAILURE);
   }
 
-  // Check for missing or extra lines
   size_t grid_size = grid_get_size(grid);
 
-  if (grid && row_count != grid_size) {
+  if (!end_of_line) {
+    printf("row_count: %zu\n", row_count);
+    row_count++;
+    printf("row_count: %zu\n", row_count);
+  }
 
+  // Check for missing or extra lines
+  if (grid && row_count != grid_size) {
     if (row_count < grid_size) {
       fprintf(stderr, "Error: grid has %zu missing lines(s)  \n",
               grid_size - row_count);
@@ -138,8 +137,6 @@ file_parser(char* filename) {
     fclose(file);
     exit(EXIT_FAILURE);
   }
-
-  // If the file ends with EOF but no \n, it is valid
 
   fclose(file);
   return grid;
@@ -232,7 +229,7 @@ main(int argc, char* argv[]) {
     }
   }
 
-  if (optind > argc) {
+  if (optind >= argc) {
     fprintf(stderr, "Error: no input file specified.\n");
     fprintf(stderr, "Try '%s --help' for more information.\n", argv[0]);
     exit(EXIT_FAILURE);
@@ -255,12 +252,10 @@ main(int argc, char* argv[]) {
       grid_free(grid);
       return EXIT_FAILURE;
 
-    } else if (grid_is_solved(grid)) {
-      printf("The grid is solved!\n");
-
     } else {
-      printf("The grid is consistent but not solved.\n");
+      printf("The grid is consistent.\n");
     }
+
     grid_free(grid);
   }
 
