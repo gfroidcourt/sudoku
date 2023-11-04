@@ -7,10 +7,10 @@ all: sudoku
 sudoku: sudoku.o colors.o grid.o
 	$(CC) $(CFLAGS) -o $@ $^ $(LDFLAGS)
 
-sudoku.o: sudoku.c sudoku.h
+sudoku.o: sudoku.c sudoku.h ../include/grid.h
 	$(CC) $(CFLAGS) $(CPPFLAGS) -c $<
 
-colors.o: colors.c ../include/colors.h ../include/grid.h
+colors.o: colors.c
 	$(CC) $(CFLAGS) $(CPPFLAGS) -c $<
 
 grid.o: grid.c ../include/grid.h ../include/colors.h

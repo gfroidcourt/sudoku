@@ -20,6 +20,12 @@ typedef struct _grid_t grid_t;
 
 typedef enum { grid_solved, grid_unsolved, grid_inconsistent } status_t;
 
+typedef struct {
+  size_t row;
+  size_t column;
+  colors_t color;
+} choice_t;
+
 /**
  * @brief Allocates memory for a new grid of the specified size.
  *
@@ -103,5 +109,7 @@ void grid_set_cell(grid_t* grid, const size_t row, const size_t column,
 bool grid_is_solved(grid_t* grid);
 
 bool grid_is_consistent(grid_t* grid);
+
+status_t grid_heuristics(grid_t* grid);
 
 #endif /* GRID_H */

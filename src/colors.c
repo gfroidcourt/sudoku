@@ -169,3 +169,110 @@ colors_random(const colors_t colors) {
   }
   return 0;
 }
+
+bool
+subgrid_consistency(colors_t* subgrid[], const size_t size) {
+  colors_t all_colors_combined = colors_empty();
+
+  for (size_t i = 0; i < size; i++) {
+    // Check for empty cells
+    if (*subgrid[i] == colors_empty()) {
+      return false;
+    }
+
+    // Check for two singleton sharing colors
+    if (colors_is_singleton(*subgrid[i])) {
+      for (size_t j = 0; j < i; j++) {
+        if (colors_is_singleton(*subgrid[j])
+            && colors_is_equal(*subgrid[i], *subgrid[j])) {
+          return false;
+        }
+      }
+    }
+
+    // Combine all colors
+    all_colors_combined = colors_or(all_colors_combined, *subgrid[i]);
+  }
+
+  // Check if each color appears at least once
+  if (colors_count(all_colors_combined) < size) {
+    return false;
+  }
+
+  return true;
+}
+
+static bool
+cross_hatching_heuristics(colors_t* subgrid[], const size_t size) {
+  bool result = false;
+  for (size_t i = 0; i < size; i++) {
+    if (colors_is_singleton(*subgrid[i])) {
+      for (size_t j = 0; j < size; j++) {
+        if (i != j && colors_is_subset(*subgrid[i], *subgrid[j])) {
+          *subgrid[j] = colors_subtract(*subgrid[j], *subgrid[i]);
+          result = true;
+        }
+      }
+    }
+  }
+  return result;
+}
+
+static bool
+lone_number_heuristic(colors_t* subgrid[], size_t size) {
+  int position = 0;
+  bool result = false;
+  for (size_t i = 0; i < size; i++) {
+    int cpt = 0;
+    for (size_t j = 0; j < size; j++) {
+      if (colors_is_in(*subgrid[j], i)) {
+        position = j;
+        cpt++;
+      }
+      if (cpt > 1) {
+        break;
+      }
+    }
+    if (cpt == 1 && !colors_is_singleton(*subgrid[position])) {
+      *subgrid[position] = colors_set(i);
+      result = true;
+    }
+  }
+
+  return result;
+}
+
+static bool
+naked_subset_heuristic(colors_t* subgrid[], size_t size) {
+  bool result = false;
+
+  for (size_t i = 0; i < size; i++) {
+    int cpt = 0;
+    int color_count = colors_count(*subgrid[i]);
+    for (size_t j = 0; j < size; j++) {
+      if (*subgrid[i] == *subgrid[j]) {
+        cpt++;
+      }
+    }
+    if (cpt == color_count) {
+      for (size_t j = 0; j < size; j++) {
+        if (*subgrid[i] != *subgrid[j]) {
+          colors_t temp = *subgrid[j];
+          *subgrid[j] = colors_subtract(*subgrid[j], *subgrid[i]);
+          if (temp != *subgrid[j]) {
+            result = true;
+          }
+        }
+      }
+    }
+  }
+  return result;
+}
+
+bool
+subgrid_heuristics(colors_t* subgrid[], const size_t size) {
+
+  return cross_hatching_heuristics(subgrid, size)
+         || lone_number_heuristic(subgrid, size)
+         || naked_subset_heuristic(subgrid, size);
+}

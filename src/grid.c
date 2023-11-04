@@ -238,74 +238,82 @@ grid_is_solved(grid_t* grid) {
   return true;
 }
 
-void
-fill_subgrid(const grid_t* grid, colors_t* subgrid, const char* type,
-             size_t index) {
-  size_t size = grid_get_size(grid);
+static void
+fill_subgrids(grid_t* grid, colors_t* subgrids[grid->size * 3][grid->size]) {
+  size_t size = grid->size;
   size_t block_size = sqrt(size);
-  char* str = NULL;
+  int subgrid_count = 0;
 
-  if (strcmp(type, "row") == 0) {
-    printf("row %zu: ", index);
-    for (size_t j = 0; j < size; ++j) {
-      subgrid[j] = grid->cells[index][j];
-      str = convert_color_to_character(subgrid[j]);
-      printf("(%zu,%zu) = '%s' ", index, j, str);
-      free(str);
+  // Check rows
+  for (size_t i = 0; i < size; ++i) {
+    for (size_t j = 0; j < size; j++) {
+      subgrids[subgrid_count][j] = &(grid->cells[i][j]);
     }
-    printf("\n");
+    subgrid_count++;
+  }
 
-  } else if (strcmp(type, "column") == 0) {
-    printf("column %zu: ", index);
-    for (size_t i = 0; i < size; ++i) {
-      subgrid[i] = grid->cells[i][index];
-      str = convert_color_to_character(subgrid[i]);
-      printf("(%zu,%zu) = '%s' ", i, index, str);
-      free(str);
+  // Check cols
+  for (size_t i = 0; i < size; ++i) {
+    for (size_t j = 0; j < size; j++) {
+      subgrids[subgrid_count][j] = &(grid->cells[j][i]);
     }
-    printf("\n");
+    subgrid_count++;
+  }
 
-  } else if (strcmp(type, "block") == 0) {
-    printf("block %zu: ", index);
-    size_t start_row = (index / block_size) * block_size;
-    size_t start_col = (index % block_size) * block_size;
+  // Check blocks
+  for (size_t i = 0; i < size; ++i) {
+    size_t start_row = (i / block_size) * block_size;
+    size_t start_col = (i % block_size) * block_size;
     size_t k = 0;
-    for (size_t i = start_row; i < start_row + block_size; ++i) {
-      for (size_t j = start_col; j < start_col + block_size; ++j) {
-        subgrid[k++] = grid->cells[i][j];
-        str = convert_color_to_character(subgrid[k - 1]);
-        printf("(%zu,%zu) = '%s' ", i, j, str);
-        free(str);
+    for (size_t j = start_row; j < start_row + block_size; ++j) {
+      for (size_t l = start_col; l < start_col + block_size; ++l) {
+        subgrids[subgrid_count][k++] = &(grid->cells[j][l]);
       }
     }
-    printf("\n");
+    subgrid_count++;
   }
 }
 
 bool
 grid_is_consistent(grid_t* grid) {
   size_t size = grid->size;
+  colors_t* subgrids[size * 3][size];
 
-  // Create the subgrid and allocate memory
-  colors_t* subgrid = malloc(size * sizeof(colors_t));
+  fill_subgrids(grid, subgrids);
 
-  // Check rows
-  for (size_t i = 0; i < size; ++i) {
-    fill_subgrid(grid, subgrid, "row", i);
+  for (size_t i = 0; i < size * 3; i++) {
+    if (!subgrid_consistency(subgrids[i], size)) {
+      return false;
+    }
   }
-
-  // Check columns
-  for (size_t i = 0; i < size; ++i) {
-    fill_subgrid(grid, subgrid, "column", i);
-  }
-
-  // Check blocks
-  for (size_t i = 0; i < size; ++i) {
-    fill_subgrid(grid, subgrid, "block", i);
-  }
-
-  // Free the memory
-  free(subgrid);
 
   return true;
+}
+
+status_t
+grid_heuristics(grid_t* grid) {
+  size_t size = grid->size;
+  colors_t* subgrids[size * 3][size];
+  bool grid_changed = true;
+
+  fill_subgrids(grid, subgrids);
+
+  while (grid_changed) {
+    grid_changed = false;
+    for (size_t i = 0; i < size * 3; i++) {
+      if (subgrid_heuristics(subgrids[i], size)) {
+        grid_changed = true;
+      }
+    }
+  }
+
+  if (!grid_is_consistent(grid)) {
+    return grid_inconsistent;
+  }
+
+  if (grid_is_solved(grid)) {
+    return grid_solved;
+  }
+
+  return grid_unsolved;
 }

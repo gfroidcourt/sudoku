@@ -36,7 +36,6 @@ print_help(char* executable_name) {
 static grid_t*
 file_parser(char* filename) {
   FILE* file = fopen(filename, "r");
-
   if (!file) {
     fprintf(stderr, "Error opening file \"%s\".\n", filename);
     exit(EXIT_FAILURE);
@@ -44,96 +43,77 @@ file_parser(char* filename) {
 
   char row[MAX_GRID_SIZE];
   size_t index = 0;
-  char c;
+  int c;
 
   grid_t* grid = NULL;
   size_t expected_row_length = 0;
   size_t row_count = 0;
 
-  bool end_of_line = false;
+  while (1) {
+    c = fgetc(file);
 
-  while ((c = fgetc(file)) != EOF) {
-    if (c == '#') {
-      while ((c = fgetc(file)) != EOF && c != '\n')
-        ;
-      continue;
+    switch (c) {
+      case '#': // Comment line
+        while ((c = fgetc(file)) != '\n' && c != EOF)
+          ;
+        break;
 
-    } else if (c == '\n') {
-      end_of_line = true;
-      if (index == 0) {
-        continue;
-      }
+      case ' ':
+      case '\t': // Whitespace characters
+        break;
 
-      if (row_count == 0) {
-        if (index == 0) {
-          fprintf(stderr, "Error: Empty file.\n");
+      case '\n':         // End of line
+      case EOF:          // End of file
+        if (index > 0) { // Process the accumulated characters in a row
+          if (row_count == 0) {
+            grid = grid_alloc(index);
+            expected_row_length = index;
+          } else if (index != expected_row_length) {
+            fprintf(stderr,
+                    "Line %zu is malformed! (wrong number of columns)\n",
+                    row_count + 1);
+            grid_free(grid);
+            fclose(file);
+            exit(EXIT_FAILURE);
+          }
+
+          for (size_t i = 0; i < index; i++) {
+            if (!grid_check_char(grid, row[i])) {
+              fprintf(stderr, "Error: Invalid character '%c' on line %zu.\n",
+                      row[i], row_count + 1);
+              grid_free(grid);
+              fclose(file);
+              exit(EXIT_FAILURE);
+            }
+            grid_set_cell(grid, row_count, i, row[i]);
+          }
+
+          row_count++;
+          index = 0;
+        }
+
+        if (c == EOF) { // Exit loop at the end of file
+          goto end_of_file;
+        }
+
+        break;
+
+      default: // Regular characters
+        if (index >= MAX_GRID_SIZE) {
+          fprintf(stderr, "Error: Row on line %zu has too many columns.\n",
+                  row_count + 1);
           fclose(file);
           exit(EXIT_FAILURE);
         }
-
-        grid = grid_alloc(index);
-        if (!grid) {
-          fclose(file);
-          exit(EXIT_FAILURE);
-        }
-
-        expected_row_length = index;
-
-      } else if (index != expected_row_length) {
-        fprintf(stderr, "Line %zu is malformed! (wrong number of columns)",
-                row_count + 1);
-        grid_free(grid);
-        fclose(file);
-        exit(EXIT_FAILURE);
-      }
-
-      for (size_t i = 0; i < index; i++) {
-        if (!grid_check_char(grid, row[i])) {
-          fprintf(stderr, "Error: Invalid character '%c' on line %zu.\n",
-                  row[i], row_count + 1);
-          grid_free(grid);
-          fclose(file);
-          exit(EXIT_FAILURE);
-        }
-        grid_set_cell(grid, row_count, i, row[i]);
-      }
-
-      row_count++;
-      index = 0;
-
-    } else if (c != ' ' && c != '\t') {
-      if (index >= MAX_GRID_SIZE) {
-        fprintf(stderr, "Error: Row on line %zu has too many columns.\n",
-                row_count + 1);
-        fclose(file);
-        exit(EXIT_FAILURE);
-      }
-      row[index++] = c;
+        row[index++] = c;
     }
   }
 
-  if (!grid) {
-    fprintf(stderr, "Error: No valid grid found in the file.\n");
-    exit(EXIT_FAILURE);
-  }
+end_of_file:
 
-  size_t grid_size = grid_get_size(grid);
-
-  if (!end_of_line) {
-    printf("row_count: %zu\n", row_count);
-    row_count++;
-    printf("row_count: %zu\n", row_count);
-  }
-
-  // Check for missing or extra lines
-  if (grid && row_count != grid_size) {
-    if (row_count < grid_size) {
-      fprintf(stderr, "Error: grid has %zu missing lines(s)  \n",
-              grid_size - row_count);
-    } else {
-      fprintf(stderr, "Error: grid has %zu extra line(s)  \n",
-              row_count - grid_size);
-    }
+  // Additional validations for grid
+  if (!grid || row_count != grid_get_size(grid)) {
+    fprintf(stderr, "Error: Incomplete or extra rows in grid.\n");
     fclose(file);
     exit(EXIT_FAILURE);
   }
@@ -246,14 +226,15 @@ main(int argc, char* argv[]) {
     grid_t* grid = file_parser(argv[i]);
 
     grid_print(grid, output);
+    printf("\n");
+    status_t status = grid_heuristics(grid);
+    grid_print(grid, output);
 
-    if (!grid_is_consistent(grid)) {
-      printf("The grid is inconsistent!\n");
+    if (status == grid_inconsistent) {
+      fprintf(stderr, "Error: Inconsistent grid.\n");
+      grid_print(grid, output);
       grid_free(grid);
-      return EXIT_FAILURE;
-
-    } else {
-      printf("The grid is consistent.\n");
+      exit(EXIT_FAILURE);
     }
 
     grid_free(grid);
