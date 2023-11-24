@@ -1,4 +1,4 @@
-CFLAGS = -std=c11 -Wall -Wextra -g -pedantic
+CFLAGS = -std=c11 -Wall -Wextra -g -pedantic 
 CPPFLAGS = -I../include -DDEBUG
 LDFLAGS = -lm
 
@@ -10,7 +10,7 @@ sudoku: sudoku.o colors.o grid.o
 sudoku.o: sudoku.c sudoku.h ../include/grid.h
 	$(CC) $(CFLAGS) $(CPPFLAGS) -c $<
 
-colors.o: colors.c
+colors.o: colors.c ../include/colors.h
 	$(CC) $(CFLAGS) $(CPPFLAGS) -c $<
 
 grid.o: grid.c ../include/grid.h ../include/colors.h

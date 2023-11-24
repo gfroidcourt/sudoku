@@ -49,24 +49,31 @@ file_parser(char* filename) {
   size_t expected_row_length = 0;
   size_t row_count = 0;
 
-  while (1) {
+  while (true) {
     c = fgetc(file);
 
     switch (c) {
-      case '#': // Comment line
+      case '#':
         while ((c = fgetc(file)) != '\n' && c != EOF)
           ;
         break;
 
       case ' ':
-      case '\t': // Whitespace characters
+      case '\t':
         break;
 
-      case '\n':         // End of line
-      case EOF:          // End of file
-        if (index > 0) { // Process the accumulated characters in a row
+      case '\n':
+      case EOF:
+        if (index > 0) {
           if (row_count == 0) {
             grid = grid_alloc(index);
+
+            if (!grid) {
+              fprintf(stderr, "Error allocating memory for grid.\n");
+              fclose(file);
+              exit(EXIT_FAILURE);
+            }
+
             expected_row_length = index;
           } else if (index != expected_row_length) {
             fprintf(stderr,
@@ -92,13 +99,13 @@ file_parser(char* filename) {
           index = 0;
         }
 
-        if (c == EOF) { // Exit loop at the end of file
+        if (c == EOF) {
           goto end_of_file;
         }
 
         break;
 
-      default: // Regular characters
+      default:
         if (index >= MAX_GRID_SIZE) {
           fprintf(stderr, "Error: Row on line %zu has too many columns.\n",
                   row_count + 1);
@@ -111,7 +118,6 @@ file_parser(char* filename) {
 
 end_of_file:
 
-  // Additional validations for grid
   if (!grid || row_count != grid_get_size(grid)) {
     fprintf(stderr, "Error: Incomplete or extra rows in grid.\n");
     fclose(file);
@@ -125,11 +131,11 @@ end_of_file:
 int
 main(int argc, char* argv[]) {
   int optc;
-  bool all = false;
   bool unique = false;
   bool generate = false;
   int result;
   char* filename = NULL;
+  _mode_t mode = mode_first;
 
   const struct option options[] = {{"help", no_argument, NULL, 'h'},
                                    {"all", no_argument, NULL, 'a'},
@@ -162,7 +168,6 @@ main(int argc, char* argv[]) {
         break;
 
       case 'o':
-        // output = fopen(optarg, "w");
         filename = optarg;
 
         if (output == NULL) {
@@ -175,7 +180,7 @@ main(int argc, char* argv[]) {
           warnx("warning: option 'all' conflict with generator mode, "
                 "disabling it !");
         }
-        all = true;
+        mode = mode_all;
         printf("search for all possible solutions\n");
         break;
 
@@ -225,18 +230,14 @@ main(int argc, char* argv[]) {
   for (int i = optind; i < argc; ++i) {
     grid_t* grid = file_parser(argv[i]);
 
-    grid_print(grid, output);
-    printf("\n");
-    status_t status = grid_heuristics(grid);
-    grid_print(grid, output);
+    grid_t* new_grid = grid_solver(grid, mode);
 
-    if (status == grid_inconsistent) {
-      fprintf(stderr, "Error: Inconsistent grid.\n");
-      grid_print(grid, output);
+    if (new_grid == NULL && mode == mode_first) {
+      fprintf(stderr, "Error: no solution found for grid %s \n", argv[i]);
       grid_free(grid);
-      exit(EXIT_FAILURE);
+      return EXIT_FAILURE;
     }
-
+    grid_print(new_grid, output);
     grid_free(grid);
   }
 

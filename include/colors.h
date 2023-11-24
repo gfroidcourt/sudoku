@@ -163,8 +163,22 @@ colors_t colors_leftmost(const colors_t colors);
  */
 colors_t colors_random(const colors_t colors);
 
+/**
+ * @brief Checks if the given subgrid is consistent.
+ *
+ * @param subgrid The subgrid to check.
+ * @param size The size of the subgrid.
+ * @return true if the subgrid is consistent, false otherwise.
+ */
 bool subgrid_consistency(colors_t* subgrid[], const size_t size);
 
+/**
+ * @brief Applies heuristics to the given subgrid.
+ *
+ * @param subgrid The subgrid to apply heuristics.
+ * @param size The size of the subgrid.
+ * @return true if the heuristics were successfully applied, false otherwise.
+ */
 bool subgrid_heuristics(colors_t* subgrid[], const size_t size);
 
 #endif /* COLORS_H */

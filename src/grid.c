@@ -49,7 +49,6 @@ grid_check_char(const grid_t* grid, const char c) {
 grid_t*
 grid_alloc(size_t size) {
   if (size == 0 || !grid_check_size(size)) {
-    fprintf(stderr, "Invalid grid size: %zu\n", size);
     return NULL;
   }
 
@@ -60,19 +59,19 @@ grid_alloc(size_t size) {
 
   grid->size = size;
   grid->cells = malloc(size * sizeof(colors_t*));
-  if (grid->cells && NULL) {
+  if (grid->cells == NULL) {
     return NULL;
   }
 
-  for (size_t i = 0; i < size; ++i) {
+  for (size_t i = 0; i < size; i++) {
     grid->cells[i] = malloc(size * sizeof(colors_t));
-    if (grid->cells == NULL) {
+    if (grid->cells[i] == NULL) {
       return NULL;
     }
   }
 
-  for (size_t i; i < size; i++) {
-    for (size_t j; j < size; j++) {
+  for (size_t i = 0; i < size; i++) {
+    for (size_t j = 0; j < size; j++) {
       grid->cells[i][j] = colors_full(size);
     }
   }
@@ -85,7 +84,7 @@ grid_free(grid_t* grid) {
     return;
   }
 
-  for (size_t i = 0; i < grid->size; ++i) {
+  for (size_t i = 0; i < grid->size; i++) {
     free(grid->cells[i]);
   }
 
@@ -316,4 +315,128 @@ grid_heuristics(grid_t* grid) {
   }
 
   return grid_unsolved;
+}
+
+bool
+grid_choice_is_empty(const choice_t choice) {
+  return choice.color == colors_empty();
+}
+
+void
+grid_choice_apply(grid_t* grid, const choice_t choice) {
+  if (grid != NULL && choice.row < grid->size && choice.column < grid->size) {
+    grid->cells[choice.row][choice.column] = choice.color;
+  }
+}
+
+void
+grid_choice_discard(grid_t* grid, const choice_t choice) {
+  if (grid != NULL && choice.row < grid->size && choice.column < grid->size) {
+    grid->cells[choice.row][choice.column] =
+        colors_subtract(grid->cells[choice.row][choice.column], choice.color);
+  } else {
+    return;
+  }
+}
+
+void
+grid_choice_print(const choice_t choice, FILE* fd) {
+  if (fd == NULL) {
+    return;
+  }
+  char* color = convert_color_to_character(choice.color);
+  fprintf(fd, "Choice at grid[%zu][%zu] = '%s' and choice is '%c'.\n",
+          choice.row, choice.column, color, color[strlen(color) - 1]);
+  free(color);
+}
+
+choice_t
+grid_choice(grid_t* grid) {
+  if (grid == NULL) {
+    return (choice_t){0, 0, colors_empty()};
+  }
+
+  size_t min_colors_count = MAX_COLORS + 1;
+  choice_t choice = {0, 0, colors_empty()};
+
+  for (size_t row = 0; row < grid->size; ++row) {
+    for (size_t column = 0; column < grid->size; ++column) {
+      colors_t cell_colors = grid->cells[row][column];
+
+      if (!colors_is_singleton(cell_colors)) {
+        size_t current_count = colors_count(cell_colors);
+
+        if (current_count > 0 && current_count < min_colors_count) {
+          min_colors_count = current_count;
+          choice.row = row;
+          choice.column = column;
+          choice.color = cell_colors;
+        }
+      }
+    }
+  }
+
+  if (!grid_choice_is_empty(choice)) {
+    choice.color = colors_rightmost(choice.color);
+  }
+
+  return choice;
+}
+
+grid_t*
+grid_solver_internal(grid_t* grid, _mode_t mode, int* solution_count) {
+  if (grid == NULL) {
+    return NULL;
+  }
+
+  status_t status = grid_heuristics(grid);
+  if (status == grid_solved) {
+    if (mode == mode_all) {
+      grid_print(grid, stdout);
+      printf("\n");
+      (*solution_count)++;
+    }
+    return (mode == mode_first) ? grid : NULL;
+  } else if (status == grid_inconsistent) {
+    return NULL;
+  }
+
+  choice_t choice = grid_choice(grid);
+  if (grid_choice_is_empty(choice)) {
+    return NULL;
+  }
+
+  grid_t* copy = grid_copy(grid);
+  if (copy == NULL) {
+    return NULL;
+  }
+
+  grid_choice_apply(copy, choice);
+
+  grid_t* result = grid_solver_internal(copy, mode, solution_count);
+  if (result != NULL && grid_is_solved(result)) {
+    if (mode == mode_all) {
+      grid_free(copy);
+      return grid_solver_internal(grid, mode, solution_count);
+    }
+    grid_free(grid);
+    return result;
+  }
+
+  grid_choice_discard(grid, choice);
+  grid_free(copy);
+
+  return grid_solver_internal(grid, mode, solution_count);
+}
+
+grid_t*
+grid_solver(grid_t* grid, _mode_t mode) {
+  int solution_count = 0;
+  grid_t* result = grid_solver_internal(grid, mode, &solution_count);
+
+  if (mode == mode_all) {
+    printf("Number of solutions: %i \n", solution_count);
+  }
+
+  return result;
 }

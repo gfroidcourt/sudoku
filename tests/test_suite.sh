@@ -27,6 +27,8 @@ do
     fi 
 done
 
+echo "\nRunning module tests..."
+
 TEST_FILES="tests/module_tests/*_tests.c"
 
 for test_file in $TEST_FILES 
@@ -50,5 +52,31 @@ do
         rm "${base_name}.o"
     else
         echo "${RED}Compilation of ${base_name} failed${RESET}"
+    fi
+done
+
+echo "\nRunning grid solver tests..."
+
+
+TEST_FILES="tests/grid-solver/*"
+
+for file in $TEST_FILES
+do
+    output=$(./sudoku $file 2> /dev/null)
+    exit_code=$?
+    if [ $exit_code -eq 1 ] && echo "$file" | grep -q "inconsistent"; then
+        echo "$bold$green[OK]$reset $blue--$reset $blue$file$reset"
+    elif [ $exit_code -eq 1 ] && ! echo "$file" | grep -q "inconsistent"; then
+        echo "$bold$red[FAIL]$reset $blue--$reset $blue$file$reset"
+        echo "Output:"
+        echo "$output"
+        echo
+    elif [ $exit_code -eq 0 ]; then
+        echo "$bold$green[OK]$reset $blue--$reset $blue$file$reset"
+    elif [ $exit_code -eq 1 ] && ! echo "$file" | grep -q "inconsistent"; then
+        echo "$bold$red[FAIL]$reset $blue--$reset $blue$file$reset"
+        echo "Output:"
+        echo "$output"
+        echo
     fi
 done

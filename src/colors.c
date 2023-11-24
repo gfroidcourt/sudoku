@@ -1,8 +1,11 @@
 #include "colors.h"
 
-#include "string.h"
 #include <stdbool.h>
 #include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+
+#include <time.h>
 
 colors_t
 colors_full(const size_t size) {
@@ -134,39 +137,36 @@ colors_leftmost(const colors_t colors) {
   return 0;
 }
 
-static colors_t
-prng(uint64_t* seed) {
-  uint64_t A = 6364136223846793005ULL;
-  uint64_t C = 1ULL;
-  *seed = *seed * A + C;
-  return *seed;
-}
-
-/**
- * @brief Returns a random color from the provided set of colors.
- */
 colors_t
 colors_random(const colors_t colors) {
-  static uint64_t seed;
+  srand(time(NULL));
 
-  size_t count = colors_count(colors);
+  size_t num_colors = 0;
+  colors_t mask = 1ULL;
+  for (size_t i = 0; i < MAX_COLORS; i++) {
+    if (colors & mask) {
+      num_colors++;
+    }
+    mask <<= 1;
+  }
 
-  if (count == 0) {
+  if (num_colors == 0) {
     return 0;
   }
 
-  uint64_t randomNumber = prng(&seed);
-  size_t random_index = randomNumber % count;
-  size_t found_colors = 0;
+  size_t random_index = rand() % num_colors;
 
+  mask = 1ULL;
   for (size_t i = 0; i < MAX_COLORS; i++) {
-    if ((colors & (1ULL << i)) != 0) {
-      if (found_colors == random_index) {
-        return (1ULL << i);
+    if (colors & mask) {
+      if (random_index == 0) {
+        return mask;
       }
-      found_colors++;
+      random_index--;
     }
+    mask <<= 1;
   }
+
   return 0;
 }
 
@@ -175,12 +175,10 @@ subgrid_consistency(colors_t* subgrid[], const size_t size) {
   colors_t all_colors_combined = colors_empty();
 
   for (size_t i = 0; i < size; i++) {
-    // Check for empty cells
     if (*subgrid[i] == colors_empty()) {
       return false;
     }
 
-    // Check for two singleton sharing colors
     if (colors_is_singleton(*subgrid[i])) {
       for (size_t j = 0; j < i; j++) {
         if (colors_is_singleton(*subgrid[j])
@@ -190,11 +188,9 @@ subgrid_consistency(colors_t* subgrid[], const size_t size) {
       }
     }
 
-    // Combine all colors
     all_colors_combined = colors_or(all_colors_combined, *subgrid[i]);
   }
 
-  // Check if each color appears at least once
   if (colors_count(all_colors_combined) < size) {
     return false;
   }
@@ -205,16 +201,24 @@ subgrid_consistency(colors_t* subgrid[], const size_t size) {
 static bool
 cross_hatching_heuristics(colors_t* subgrid[], const size_t size) {
   bool result = false;
+  colors_t singletons = colors_empty();
+
   for (size_t i = 0; i < size; i++) {
     if (colors_is_singleton(*subgrid[i])) {
-      for (size_t j = 0; j < size; j++) {
-        if (i != j && colors_is_subset(*subgrid[i], *subgrid[j])) {
-          *subgrid[j] = colors_subtract(*subgrid[j], *subgrid[i]);
-          result = true;
-        }
+      singletons = colors_or(singletons, *subgrid[i]);
+    }
+  }
+
+  for (size_t i = 0; i < size; i++) {
+    if (!colors_is_singleton(*subgrid[i])) {
+      colors_t temp = *subgrid[i];
+      *subgrid[i] = colors_subtract(*subgrid[i], singletons);
+      if (temp != *subgrid[i]) {
+        result = true;
       }
     }
   }
+
   return result;
 }
 
